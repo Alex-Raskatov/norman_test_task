@@ -1,9 +1,13 @@
 #include <iostream>
 #include <cmath>
+#include <random>
+#include <fstream>
+#include <string>
 
 const double sigma = 1, epsilon = 1, mass = 1;
 const double tau = std::sqrt(std::pow(sigma, 2)*mass/epsilon);
 const double t = tau/1000;
+
 
 class Vector {
     
@@ -81,7 +85,7 @@ class Atom {
 
     public:
 
-        Atom(double x, double y, double z, double v_x, double v_y, double v_z, double f_x = 0, double f_y = 0, double f_z = 0): coordinates(0,0,0), speed(0,0,0), force(0,0,0) {
+        Atom(double x = 0, double y = 0, double z = 0, double v_x = 0, double v_y = 0, double v_z = 0, double f_x = 0, double f_y = 0, double f_z = 0): coordinates(0,0,0), speed(0,0,0), force(0,0,0) {
             
             coordinates.SetX(x);
             coordinates.SetY(y);
@@ -165,14 +169,19 @@ class Atom {
 
         void calculate_force(Atom atom) {
 
-            double r = std::sqrt(coordinates.GetX()*coordinates.GetX()
-                                 + coordinates.GetY()*coordinates.GetY()
-                                 + coordinates.GetZ()*coordinates.GetZ());
-            double norm_r_x = (atom.GetX() - coordinates.GetX()) / r;
-            double norm_r_y = (atom.GetY() - coordinates.GetY()) / r;
-            double norm_r_z = (atom.GetZ() - coordinates.GetZ()) / r;
+            double delta_x = atom.GetX() - coordinates.GetX();
+            double delta_y = atom.GetY() - coordinates.GetY();
+            double delta_z = atom.GetZ() - coordinates.GetZ();
+
+            double r = std::sqrt(delta_x*delta_x + delta_y*delta_y + delta_z*delta_z);
+            double norm_r_x = delta_x / r;
+            double norm_r_y = delta_y / r;
+            double norm_r_z = delta_z / r;
 
             double force_to_atom = -24*( std::pow((1/r),7) - 2*std::pow((1/r), 13));
+
+            /*можно не извлекать корень а работать с квадратом
+            */
 
             Vector force_to_atom_vec(force_to_atom*norm_r_x,
                             force_to_atom*norm_r_y,
@@ -188,10 +197,144 @@ class Atom {
         }
 };
 
-int CreateDrop (double drops_radius, Vector drops_center, double lattice_step, double atoms_max_speed_proection, Vector drops_speed) {
+int StdOutputWrite(Atom atoms_arr[], int size) {
+
+    for (int i = 0; i < size; i++) {
+        std::cout 
+            << atoms_arr[i].GetX() << ' ' 
+            << atoms_arr[i].GetY() << ' '
+            << atoms_arr[i].GetZ() << ' '
+            << atoms_arr[i].GetXSpeed() << ' '
+            << atoms_arr[i].GetYSpeed() << ' '
+            << atoms_arr[i].GetZSpeed() << ' '
+            << atoms_arr[i].GetXForce() << ' '
+            << atoms_arr[i].GetYForce() << ' '
+            << atoms_arr[i].GetZForce() << ' '
+            << '\n';
+    }
+
+    return 0;
+
+}
+
+int CreateDrop (Atom atoms_arr[], double drops_radius, Vector drops_center, double lattice_step, double atoms_max_speed_proection, Vector drops_speed) {
+    
+    int n = 2*drops_radius/lattice_step;
+
+    unsigned couter = 0;
+
+    unsigned seed = 1000;
+    std::default_random_engine rnd(seed);
+    std::uniform_real_distribution<double> dstr(-atoms_max_speed_proection, atoms_max_speed_proection);
+
+
+    for (int i = -n/2; i < n/2; ++i){
+        for (int j = -n/2; j < n/2; ++j){
+            for (int k = -n/2; k < n/2; ++k){
+                if ((std::pow((i*lattice_step), 2) + std::pow((j*lattice_step), 2) + std::pow((k*lattice_step), 2)) < std::pow(drops_radius, 2)) {
+                    atoms_arr[couter] = Atom(i*lattice_step, j*lattice_step, k*lattice_step, dstr(rnd),dstr(rnd),dstr(rnd));
+                    ++couter;
+                }
+            }
+        }
+    }
+
+    return ++couter;
+}
+
+int CreateCube (Atom atoms_arr[], double lattice_step, int size, double atoms_max_speed_proection) {
+
+    unsigned couter = 0;
+
+    unsigned seed = 1000;
+    std::default_random_engine rnd(seed);
+    std::uniform_real_distribution<double> dstr(-atoms_max_speed_proection, atoms_max_speed_proection);
+
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            for (int k = 0; k < size; k++) {
+                atoms_arr[couter] = Atom(i*lattice_step, j*lattice_step, k*lattice_step, dstr(rnd),dstr(rnd),dstr(rnd));
+                ++couter;
+            }
+        }
+    }
+
+    return couter;
+
+}
+
+int ForseCulc (Atom atoms_arr[], int size) {
+
+    for (int i = 0; i < size; i++) {
+        atoms_arr[i].null_force();
+    }
+    
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            if (i != j) atoms_arr[i].calculate_force(atoms_arr[j]);
+        }
+    }
+
     return 0;
 }
 
+
+int TimeStep (Atom atoms_arr[], int size) {
+
+    ForseCulc(atoms_arr, size);
+
+    for (int i = 0; i < size; i++) {
+        atoms_arr[i].move();
+    }
+
+    return 0;
+}
+
+int FileWrite (Atom atoms_arr[], int size, unsigned step) {
+
+    std::string file_name = "./data/atoms_step_" + std::to_string(step) + ".xyz";
+
+    std::ofstream fout(file_name);
+
+    fout << size << '\n' << "some atoms" << '\n';
+
+    for (int i = 0; i < size; i++) {
+        fout 
+            << 'H' << ' '
+            << std::to_string(atoms_arr[i].GetX()) << ' ' 
+            << std::to_string(atoms_arr[i].GetY()) << ' '
+            << std::to_string(atoms_arr[i].GetZ()) << ' '
+            << '\n'; 
+    }
+
+    fout.close();
+
+    return 0;
+}
+
+
+
 int main () {
+    Atom array[1024];
+
+    unsigned size;
+
+    int cube_size = 3;
+
+    double init_lattice_step = 3, atoms_speed = 0.5;
+
+    unsigned steps = 100000;
+
+    size = CreateCube(array, init_lattice_step, cube_size , atoms_speed );
+    
+    if (steps) {
+        for (int i = 0; i < steps; i++) {
+            TimeStep(array, size);
+            if (i % 1000 == 0) {
+                FileWrite(array, size, i+1);
+            }
+        }
+    }
+
     return 0;
 }

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+rm -r data
+
+mkdir data
+
+g++ main.cpp -o main_bin
+
+./main_bin
+
+ovito &
+
+echo "the end"

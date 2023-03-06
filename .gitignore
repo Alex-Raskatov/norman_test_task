@@ -1,0 +1,5 @@
+*.out
+*_bin
+*bin
+/data
+test.cpp
