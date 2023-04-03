@@ -1,5 +1,11 @@
 *.out
 *_bin
 *bin
+*png
+*py
 /data
+/data*
+/data_old
+/*_old_*
+/venv
 test.cpp
