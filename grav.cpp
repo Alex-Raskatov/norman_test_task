@@ -191,7 +191,7 @@ class Atom {
 
             double r_squard = delta_x*delta_x + delta_y*delta_y + delta_z*delta_z;
 
-            double force_to_atom = -24*( std::pow((1/r_squard),4) - 2*std::pow((1/r_squard), 7));
+            double force_to_atom = (1/r_squard);
 
             Vector force_to_atom_vec(force_to_atom*delta_x,
                             force_to_atom*delta_y,
@@ -211,7 +211,7 @@ class Atom {
                               + (atom.GetY() - coordinates.GetY())*(atom.GetY() - coordinates.GetY())
                               + (atom.GetZ() - coordinates.GetZ())*(atom.GetZ() - coordinates.GetZ());
 
-            return 4*(std::pow((1/r_squard), 6) - std::pow((1/r_squard), 3));
+            return -std::pow((1/r_squard), 0.5);
 
         }
 
@@ -337,12 +337,11 @@ int WriteCoorToFile (Atom atoms_arr[], int size, unsigned step) {
 int EnegeCulc (double stepsEnerge[] ,Atom atoms_arr[], int size, unsigned step) {
     double energe = 0;
     for (int i = 0; i < size; i++) {
-        // stepsEnerge[step] += atoms_arr[i].GetKinEnerge();
+        stepsEnerge[step] += atoms_arr[i].GetKinEnerge();
 
         for (int j = i + 1; j < size; j++) {
             stepsEnerge[step] += atoms_arr[i].p2pPotEnerge(atoms_arr[j]);
         }
-        
         
     }
 
@@ -376,19 +375,14 @@ int main () {
 
     int cube_size = 2;
 
-    double init_lattice_step = 5, atoms_speed = 0.001;
+    double init_lattice_step = 10, atoms_speed = 1;
 
     unsigned const steps = 1000000;
 
     double energe[steps];
 
-    // size = CreateCube(array, init_lattice_step, cube_size , atoms_speed );
+    size = CreateCube(array, init_lattice_step, cube_size , atoms_speed );
     
-    size = 2;
-
-    array[0] = Atom(0, 0,0,0,0,0,0,0,0);
-    array[1] = Atom(2,0,0,0,0,0,0,0,0);
-
     if (steps) {
         for (int i = 0; i < steps; i++) {
             TimeStep(array, size);

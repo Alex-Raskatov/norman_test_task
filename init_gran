@@ -1,0 +1,11 @@
+#!/bin/bash
+
+rm -r data_gran
+
+mkdir data_gran
+
+g++ simple gran.cpp -o simple_gran_bin
+
+./simple_gran_bin
+
+echo "the end"
